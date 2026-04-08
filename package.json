@@ -1,12 +1,12 @@
 {
-  "name": "webpack-demo",
+  "name": "dynamic-quoting-system",
   "version": "1.0.0",
-  "description": "",
-  "private": "true",
+  "description": "Client-side implementation quoting engine for modular software proposals.",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack",
-    "start": "webpack serve --open",
+    "test": "node --test",
+    "build": "webpack --mode production",
+    "start": "webpack serve --mode development --open",
     "dev": "webpack --mode development"
   },
   "keywords": [],

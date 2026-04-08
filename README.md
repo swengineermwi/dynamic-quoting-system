@@ -1,49 +1,91 @@
-# WEBPACK 5 TEMPLATE
+# Dynamic Quoting System
 
-> Everything you need to start using webpack is all setup and ready to use just run the following commands to get started:
+Single-page application for configuring implementation quotations for a B2B2C hire-purchase platform. The app is client-side only and produces a printable quotation that can be saved as PDF for external sharing.
 
-Get started by copying and pasting the following in your terminal: 
+## Features
 
-- 1 
-```
-git clone git@github.com:Tchilo/webpack.git
-```
-- 2
+- Quote builder with module include/exclude controls and tier selection
+- Simple three-step flow: configuration, quotation details, and review
+- Preset package templates: Starter, Growth, Enterprise, and Custom
+- Optional AI Intelligence Module with `AI Assist`, `AI Decisioning`, and `AI Intelligence Suite` tiers
+- Real-time single-value quotation calculation using the starting price for each selected tier
+- Client-facing quotation document with assumptions, validity, payment terms, and printable output
+- Quote detail view with printable/exportable summary
+- Quote workflow statuses: `draft`, `generated`, `approved`, `archived`
+- Validation for missing required fields, unsupported currency, and empty module scope
+- Config-driven catalog and templates to make future module additions straightforward
 
-```
-cd webpack
-```
+## Stack
 
-- 3
-```
-npm install
-```
+- Webpack 5
+- Vanilla JavaScript
+- CSS
+- Node built-in test runner for automated tests
 
-- 4
+## Project Structure
 
- This will generate a dist folder you never edit what is in there.
-```
+- `src/data/` static pricing catalog, templates, users, and seeded quotes
+- `src/domain/` pricing and quote rules
+- `src/services/` local storage repository for generated quotations
+- `src/ui/` SPA rendering and interaction logic
+- `tests/` pricing and quote repository tests
+
+## Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+
+   ```bash
+   npm start
+   ```
+
+3. Open [http://localhost:8080](http://localhost:8080) if it does not open automatically.
+
+## Build
+
+```bash
 npm run build
 ```
 
+## Tests
 
-- 5
-
-```
-npm start
-```
-The browser will open and you should see this text : "Let's Make it Happen!", if this is not the case please stay calm and simply open your browser and paste this.
-```
-http://localhost:3000
+```bash
+npm test
 ```
 
+## Pricing Logic
 
-- 6
+The pricing rules live in `src/domain/quoteEngine.js`.
 
- You can start editing the files in the "src" folder
+Calculation order:
 
-## Happy coding! 🌈
+1. `subtotal = sum(selected module starting tier costs)`
+2. `discount amount = subtotal x discount%`
+3. `discounted subtotal = subtotal - discount amount`
+4. `tax amount = discounted subtotal x tax%`
+5. `final total = discounted subtotal + tax amount`
 
-if you are interested in learning more about webpack click the link below
+All financial outputs are rounded to 2 decimal places.
 
-[click here!](https://webpack.js.org/guides/getting-started/)
+## Business Defaults
+
+- Platform Core is included by default in the Custom template and all non-trivial preset packages.
+- Mobile Money Integration is modeled as an optional add-on.
+- AI Intelligence Module is modeled as an optional add-on.
+- Basic/Starter templates keep AI off by default; Standard/Growth preselect `AI Decisioning`, and Advanced/Enterprise preselect `AI Intelligence Suite` as optional recommended tiers.
+- Currency support currently starts with ZMK.
+- The app ships with seeded sample quotes for local development and UI verification.
+
+## Persistence Model
+
+- Quotes are stored under browser local storage.
+- There is no server persistence in this implementation.
+
+## Future Extension
+
+The code separates catalog data, pricing rules, storage, and UI so a future cash-loan quoting flow can be added as a separate quote domain without rewriting the current SPA.
