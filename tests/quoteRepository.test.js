@@ -15,7 +15,7 @@ test('QuoteRepository seeds sample quotes when local storage is empty', () => {
   assert.equal(quotes[0].quoteType, 'implementation');
 });
 
-test('QuoteRepository saves drafts and regenerates an existing quote', () => {
+test('QuoteRepository saves drafts and submits an existing quote', () => {
   let index = 0;
   const timestamps = [
     '2026-04-08T08:00:00.000Z',
@@ -39,15 +39,15 @@ test('QuoteRepository saves drafts and regenerates an existing quote', () => {
 
   updatedDraft.taxPercent = 16;
 
-  const generatedQuote = repository.saveQuote(updatedDraft, {
-    mode: 'generated',
+  const submittedQuote = repository.saveQuote(updatedDraft, {
+    mode: 'submitted',
     quoteId: savedDraft.id,
   });
 
   assert.equal(savedDraft.status, 'draft');
   assert.equal(savedDraft.quoteNumber, 'QT-20260408-001');
-  assert.equal(generatedQuote.status, 'generated');
-  assert.equal(generatedQuote.createdAt, savedDraft.createdAt);
+  assert.equal(submittedQuote.status, 'submitted');
+  assert.equal(submittedQuote.createdAt, savedDraft.createdAt);
   assert.equal(repository.listQuotes().length, 1);
 });
 
@@ -63,7 +63,7 @@ test('QuoteRepository updates workflow status without changing quote identity', 
   draft.projectName = 'Employer rollout';
   draft.createdBy = 'user-sara-sales';
 
-  const savedQuote = repository.saveQuote(draft, { mode: 'generated' });
+  const savedQuote = repository.saveQuote(draft, { mode: 'submitted' });
   const approvedQuote = repository.updateStatus(savedQuote.id, 'approved');
 
   assert.equal(approvedQuote.id, savedQuote.id);

@@ -97,6 +97,6 @@ test('validateQuoteDraft catches unsupported currency and empty scope', () => {
 
   assert.deepEqual(validation.errors, [
     'Currency must be one of the supported currencies.',
-    'Select at least one module before generating the quote.',
+    'Select at least one module before submitting the quote.',
   ]);
 });

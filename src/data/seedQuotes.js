@@ -2,7 +2,7 @@ const SEEDED_QUOTE_INPUTS = [
   {
     id: 'seed-quote-standard-rollout',
     quoteNumber: 'QT-20260401-001',
-    status: 'generated',
+    status: 'submitted',
     createdAt: '2026-04-01T09:30:00.000Z',
     updatedAt: '2026-04-02T11:45:00.000Z',
     customerName: 'Horizon Mills',

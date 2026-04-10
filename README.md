@@ -1,6 +1,6 @@
 # Dynamic Quoting System
 
-Single-page application for configuring implementation quotations for a B2B2C hire-purchase platform. The app is client-side only and produces a printable quotation that can be saved as PDF for external sharing.
+Single-page application for configuring implementation quotations for a B2B2C hire-purchase platform. The app is client-side only and supports drafting and submitting quotations within the browser.
 
 ## Features
 
@@ -9,9 +9,9 @@ Single-page application for configuring implementation quotations for a B2B2C hi
 - Preset package templates: Starter, Growth, Enterprise, and Custom
 - Optional AI Intelligence Module with `AI Assist`, `AI Decisioning`, and `AI Intelligence Suite` tiers
 - Real-time single-value quotation calculation using the starting price for each selected tier
-- Client-facing quotation document with assumptions, validity, payment terms, and printable output
-- Quote detail view with printable/exportable summary
-- Quote workflow statuses: `draft`, `generated`, `approved`, `archived`
+- Client-facing quotation document with assumptions, validity, payment terms, and submission-ready summary
+- Quote detail view with submission and status management actions
+- Quote workflow statuses: `draft`, `submitted`, `approved`, `archived`
 - Validation for missing required fields, unsupported currency, and empty module scope
 - Config-driven catalog and templates to make future module additions straightforward
 

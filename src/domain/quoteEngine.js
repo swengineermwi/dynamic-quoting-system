@@ -253,7 +253,7 @@ function validateQuoteDraft(draft, catalog = MODULE_CATALOG, options = {}) {
     errors.push(
       mode === 'draft'
         ? 'Select at least one module before saving the draft.'
-        : 'Select at least one module before generating the quote.',
+        : 'Select at least one module before submitting the quote.',
     );
   }
 

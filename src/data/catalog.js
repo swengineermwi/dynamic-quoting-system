@@ -290,7 +290,7 @@ const CLIENT_QUOTATION_DEFAULTS = {
 };
 
 const SUPPORTED_CURRENCIES = ['ZMK'];
-const QUOTE_STATUSES = ['draft', 'generated', 'approved', 'archived'];
+const QUOTE_STATUSES = ['draft', 'submitted', 'approved', 'archived'];
 const DEFAULT_TEMPLATE_ID = 'custom-package';
 
 module.exports = {

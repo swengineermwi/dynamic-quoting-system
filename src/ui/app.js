@@ -526,7 +526,7 @@ function renderBuilderView(state) {
         <div class="panel-actions panel-actions--spread">
           <button type="button" class="button button--ghost" data-action="previous-step">Back</button>
           <div class="panel-actions">
-            <button type="button" class="button button--secondary" data-action="generate-quote">Generate quotation</button>
+            <button type="button" class="button button--primary" data-action="submit-quote">Submit quotation</button>
           </div>
         </div>
       </section>
@@ -570,10 +570,9 @@ function renderQuoteDetailView(quote) {
         </div>
       </div>
       <div class="panel-actions">
-        <button type="button" class="button button--secondary" data-action="print-quote">Print / Save PDF</button>
+        ${quote.status !== 'submitted' && quote.status !== 'approved' && quote.status !== 'archived' ? `<button type="button" class="button button--primary" data-action="submit-quote" data-quote-id="${quote.id}">Submit quote</button>` : ''}
         ${quote.status !== 'approved' ? `<button type="button" class="button button--primary" data-action="set-status" data-status="approved" data-quote-id="${quote.id}">Mark approved</button>` : ''}
         ${quote.status !== 'archived' ? `<button type="button" class="button button--ghost" data-action="set-status" data-status="archived" data-quote-id="${quote.id}">Archive quote</button>` : ''}
-        ${quote.status !== 'generated' ? `<button type="button" class="button button--secondary" data-action="set-status" data-status="generated" data-quote-id="${quote.id}">Mark generated</button>` : ''}
         <button type="button" class="button button--ghost" data-action="new-quote">New quotation</button>
         <button type="button" class="button button--ghost" data-action="edit-quote" data-quote-id="${quote.id}">Edit quote</button>
       </div>
@@ -818,10 +817,10 @@ function createQuoteApp(rootElement) {
         'success',
         mode === 'draft'
           ? `${savedQuote.quoteNumber} saved locally in this browser.`
-          : `${savedQuote.quoteNumber} generated and ready to print.`,
+          : `${savedQuote.quoteNumber} submitted successfully.`,
       );
 
-      if (mode === 'generated') {
+      if (mode === 'submitted') {
         navigate(`#/quote/${savedQuote.id}`);
         return;
       }
@@ -888,8 +887,23 @@ function createQuoteApp(rootElement) {
       return;
     }
 
-    if (action === 'generate-quote') {
-      persistQuote('generated');
+    if (action === 'submit-quote') {
+      if (state.currentRoute && state.currentRoute.name === 'detail' && quoteId) {
+        const existingQuote = state.repository.getQuoteById(quoteId);
+
+        if (!existingQuote) {
+          setNotice('error', 'That quote could not be loaded from local storage.');
+          renderCurrentRoute();
+          return;
+        }
+
+        state.currentBuilderQuoteId = existingQuote.id;
+        state.draft = quoteRecordToDraft(existingQuote);
+        state.submissionErrors = [];
+        updateDraftDerivedState();
+      }
+
+      persistQuote('submitted');
       return;
     }
 
@@ -909,9 +923,6 @@ function createQuoteApp(rootElement) {
       return;
     }
 
-    if (action === 'print-quote') {
-      window.print();
-    }
   });
 
   rootElement.addEventListener('change', (event) => {
