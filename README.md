@@ -46,6 +46,8 @@ Single-page application for configuring implementation quotations for a B2B2C hi
 
 3. Open [http://localhost:8080](http://localhost:8080) if it does not open automatically.
 
+4. To enable Blob submission, set `BLOB_READ_WRITE_TOKEN` in your environment before starting or building the app.
+
 ## Build
 
 ```bash

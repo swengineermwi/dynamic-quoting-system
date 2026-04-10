@@ -272,6 +272,8 @@ function buildQuoteRecord(options) {
     now = new Date(),
     quoteId,
     quoteNumber,
+    submissionBlobPath = null,
+    submissionBlobUrl = null,
   } = options;
 
   if (!QUOTE_STATUSES.includes(mode)) {
@@ -310,6 +312,11 @@ function buildQuoteRecord(options) {
     quoteNumber: existingQuote ? existingQuote.quoteNumber : quoteNumber,
     quoteType: 'implementation',
     selectedTemplateId: draft.selectedTemplateId || DEFAULT_TEMPLATE_ID,
+    submissionBlobPath: submissionBlobPath || existingQuote?.submissionBlobPath || null,
+    submissionBlobUrl: submissionBlobUrl || existingQuote?.submissionBlobUrl || null,
+    submittedAt: mode === 'submitted'
+      ? (existingQuote?.submittedAt || timestamp)
+      : (existingQuote?.submittedAt || null),
     status: mode,
     subtotal: pricing.subtotal,
     subtotalHigh: pricing.subtotalHigh,

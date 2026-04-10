@@ -585,12 +585,39 @@ function renderQuoteDetailView(quote) {
           <span>Last updated</span>
           <strong>${escapeHtml(formatDateTime(quote.updatedAt))}</strong>
         </article>
+        ${quote.submittedAt ? `
+          <article class="detail-card">
+            <span>Submitted</span>
+            <strong>${escapeHtml(formatDateTime(quote.submittedAt))}</strong>
+          </article>
+        ` : ''}
       </div>
+        ${quote.submissionBlobUrl ? `
+        <section class="quotation-document__block">
+          <h3>Submission record</h3>
+          <p>
+            Private Blob reference:
+            <a href="${escapeHtml(quote.submissionBlobUrl)}" target="_blank" rel="noreferrer">${escapeHtml(quote.submissionBlobUrl)}</a>
+          </p>
+        </section>
+      ` : ''}
       ${renderMessageGroup('Quote warnings', 'warning', quote.warnings)}
     </section>
 
     ${renderClientQuotationDocument(quote)}
   `;
+}
+
+function buildSubmissionPath(quote) {
+  const quoteNumber = String(quote.quoteNumber || 'quote').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return `quotes/${quoteNumber}-${quote.id}.json`;
+}
+
+function buildSubmissionPayload(quote) {
+  return JSON.stringify({
+    submittedAt: new Date().toISOString(),
+    quote,
+  }, null, 2);
 }
 
 function renderShell(state, route, content) {
@@ -630,6 +657,10 @@ function createQuoteApp(rootElement) {
 
   function setNotice(type, message) {
     state.notice = { type, message };
+  }
+
+  function logSubmitStep(step, details = {}) {
+    console.log(`[quote-submit] ${step}`, details);
   }
 
   function updateDraftDerivedState() {
@@ -833,6 +864,96 @@ function createQuoteApp(rootElement) {
     }
   }
 
+  async function submitQuote(mode = 'submitted', quoteId = null) {
+    logSubmitStep('submit-start', {
+      mode,
+      quoteId,
+      currentBuilderQuoteId: state.currentBuilderQuoteId,
+    });
+    syncDraftFromForm();
+    logSubmitStep('draft-synced', {
+      customerName: state.draft.customerName,
+      projectName: state.draft.projectName,
+      selectedTemplateId: state.draft.selectedTemplateId,
+      moduleCount: Object.values(state.draft.moduleSelections).filter((selection) => selection.included).length,
+    });
+
+    try {
+      logSubmitStep('saving-draft-quote');
+      const draftQuote = state.repository.saveQuote(state.draft, {
+        mode,
+        quoteId: quoteId || state.currentBuilderQuoteId,
+      });
+      logSubmitStep('draft-quote-saved', {
+        id: draftQuote.id,
+        quoteNumber: draftQuote.quoteNumber,
+        status: draftQuote.status,
+      });
+
+      const blobPath = buildSubmissionPath(draftQuote);
+      const submissionPayload = buildSubmissionPayload(draftQuote);
+      logSubmitStep('submit-request-start', {
+        endpoint: '/api/submit-quote',
+        blobPath,
+        payloadSize: submissionPayload.length,
+      });
+      const response = await fetch('/api/submit-quote', {
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify({
+          blobPath,
+          quote: draftQuote,
+          submittedAt: new Date().toISOString(),
+        }),
+      });
+      const responseBody = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(responseBody.error || `Submission failed with status ${response.status}.`);
+      }
+
+      logSubmitStep('submit-request-complete', responseBody);
+
+      logSubmitStep('persist-submission-metadata');
+      const savedQuote = state.repository.saveQuote(state.draft, {
+        mode,
+        quoteId: draftQuote.id,
+        submissionBlobPath: responseBody.blobPath || blobPath,
+        submissionBlobUrl: responseBody.blobUrl || null,
+      });
+      logSubmitStep('submission-metadata-saved', {
+        id: savedQuote.id,
+        quoteNumber: savedQuote.quoteNumber,
+        submissionBlobPath: savedQuote.submissionBlobPath,
+        submissionBlobUrl: savedQuote.submissionBlobUrl,
+      });
+
+      state.currentBuilderQuoteId = savedQuote.id;
+      state.draft = quoteRecordToDraft(savedQuote);
+      state.submissionErrors = [];
+      updateDraftDerivedState();
+      setNotice(
+        'success',
+        `${savedQuote.quoteNumber} submitted to public Vercel Blob storage.`,
+      );
+      logSubmitStep('submit-success', {
+        quoteId: savedQuote.id,
+        quoteNumber: savedQuote.quoteNumber,
+      });
+      navigate(`#/quote/${savedQuote.id}`);
+    } catch (error) {
+      logSubmitStep('submit-failed', {
+        message: error.message,
+        validationErrors: error.validationErrors || null,
+      });
+      state.submissionErrors = error.validationErrors || [error.message];
+      setNotice('error', state.submissionErrors.join(' '));
+      syncBuilderPanels();
+    }
+  }
+
   function updateQuoteStatus(quoteId, status) {
     try {
       const updatedQuote = state.repository.updateStatus(quoteId, status);
@@ -844,7 +965,7 @@ function createQuoteApp(rootElement) {
     }
   }
 
-  rootElement.addEventListener('click', (event) => {
+  rootElement.addEventListener('click', async (event) => {
     const actionTarget = event.target.closest('[data-action]');
 
     if (!actionTarget) {
@@ -903,7 +1024,7 @@ function createQuoteApp(rootElement) {
         updateDraftDerivedState();
       }
 
-      persistQuote('submitted');
+      await submitQuote('submitted', quoteId);
       return;
     }
 
