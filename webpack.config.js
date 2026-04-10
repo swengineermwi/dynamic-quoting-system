@@ -75,10 +75,12 @@ module.exports = {
               throw new Error('blobPath and quote are required.');
             }
 
-            const blobResult = await put(blobPath, JSON.stringify({
+            const blobBody = JSON.stringify({
               submittedAt,
               quote,
-            }, null, 2), {
+            }, null, 2);
+
+            const blobResult = await put(blobPath, blobBody, {
               token: blobToken,
               access: 'public',
               contentType: 'application/json',
@@ -88,6 +90,7 @@ module.exports = {
             response.end(JSON.stringify({
               blobPath: blobResult.pathname,
               blobUrl: blobResult.url,
+              byteLength: Buffer.byteLength(blobBody, 'utf8'),
               submittedAt,
             }));
           } catch (error) {

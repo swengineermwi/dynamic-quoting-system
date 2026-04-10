@@ -934,10 +934,7 @@ function createQuoteApp(rootElement) {
       state.draft = quoteRecordToDraft(savedQuote);
       state.submissionErrors = [];
       updateDraftDerivedState();
-      setNotice(
-        'success',
-        `${savedQuote.quoteNumber} submitted to public Vercel Blob storage.`,
-      );
+      setNotice('success', `${savedQuote.quoteNumber} submitted.`);
       logSubmitStep('submit-success', {
         quoteId: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
