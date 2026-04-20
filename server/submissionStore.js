@@ -71,7 +71,7 @@ function buildSubmissionPath(payload) {
 
 async function readBlobJson(pathname) {
   const blobResponse = await get(pathname, {
-    access: 'private',
+    access: 'public',
     useCache: false,
     ...getBlobOptions(),
   });
@@ -134,7 +134,7 @@ async function saveSubmission(payload) {
     buildSubmissionPath(submissionRecord),
     JSON.stringify(submissionRecord, null, 2),
     {
-      access: 'private',
+      access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',

@@ -578,7 +578,7 @@ function renderQuoteDetailView(quote) {
         <section class="quotation-document__block">
           <h3>Submission record</h3>
           <p>
-            Private Blob reference:
+            Blob reference:
             <a href="${escapeHtml(quote.submissionBlobUrl)}" target="_blank" rel="noreferrer">${escapeHtml(quote.submissionBlobUrl)}</a>
           </p>
         </section>
