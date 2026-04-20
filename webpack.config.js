@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const submitQuoteHandler = require('./api/submit-quote');
 
 module.exports = {
   mode: 'development',
@@ -17,41 +18,7 @@ module.exports = {
         return middlewares;
       }
 
-      devServer.app.post('/api/submit-quote', (request, response) => {
-        let body = '';
-
-        request.setEncoding('utf8');
-        request.on('data', (chunk) => {
-          body += chunk;
-        });
-
-        request.on('end', () => {
-          try {
-            const parsedBody = body ? JSON.parse(body) : {};
-            const quoteId = parsedBody.quoteId;
-            const quoteNumber = parsedBody.quoteNumber;
-            const submittedAt = parsedBody.submittedAt || new Date().toISOString();
-            const total = parsedBody.total;
-
-            if (!quoteId || !quoteNumber) {
-              throw new Error('quoteId and quoteNumber are required.');
-            }
-
-            response.setHeader('content-type', 'application/json');
-            response.end(JSON.stringify({
-              quoteId,
-              quoteNumber,
-              receiptId: `submission-${quoteId}`,
-              submittedAt,
-              total,
-            }));
-          } catch (error) {
-            response.statusCode = 500;
-            response.setHeader('content-type', 'application/json');
-            response.end(JSON.stringify({ error: error.message }));
-          }
-        });
-      });
+      devServer.app.all('/api/submit-quote', (request, response) => submitQuoteHandler(request, response));
 
       return middlewares;
     },

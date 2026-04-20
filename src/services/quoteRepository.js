@@ -124,6 +124,8 @@ class QuoteRepository {
       now: this.now(),
       quoteId: existingQuote ? existingQuote.id : this.idFactory(),
       quoteNumber: existingQuote ? existingQuote.quoteNumber : this.buildQuoteNumber(nextSequence),
+      submissionBlobPath: options.submissionBlobPath,
+      submissionBlobUrl: options.submissionBlobUrl,
     });
     const nextQuotes = existingQuote
       ? quotes.map((quoteItem) => (quoteItem.id === existingQuote.id ? quoteRecord : quoteItem))

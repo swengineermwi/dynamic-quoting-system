@@ -26,7 +26,7 @@ Single-page application for configuring implementation quotations for a B2B2C hi
 
 - `src/data/` static pricing catalog, templates, users, and seeded quotes
 - `src/domain/` pricing and quote rules
-- `src/services/` local storage repository for generated quotations
+- `src/services/` in-memory repository for generated quotations
 - `src/ui/` SPA rendering and interaction logic
 - `tests/` pricing and quote repository tests
 
@@ -46,7 +46,7 @@ Single-page application for configuring implementation quotations for a B2B2C hi
 
 3. Open [http://localhost:8080](http://localhost:8080) if it does not open automatically.
 
-4. To enable Blob submission, set `BLOB_READ_WRITE_TOKEN` in your environment before starting or building the app.
+4. To enable Blob-backed submission, set `BLOB_READ_WRITE_TOKEN` in your environment before starting or deploying the app. Local development also supports `.env.local`.
 
 ## Build
 
@@ -85,8 +85,8 @@ All financial outputs are rounded to 2 decimal places.
 
 ## Persistence Model
 
-- Quotes are stored under browser local storage.
-- There is no server persistence in this implementation.
+- Builder quote state is stored in memory for the current session only.
+- Submitted configurations are uploaded to Vercel Blob through `/api/submit-quote` and surfaced back in the UI under uploaded configurations.
 
 ## Future Extension
 

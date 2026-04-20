@@ -1,0 +1,119 @@
+[
+  {
+    "id": "submission-quote-1776684606030-upsuso",
+    "quote": {
+      "assumptions": "",
+      "createdAt": "2026-04-20T11:30:06.030Z",
+      "createdBy": "user-sara-sales",
+      "currency": "ZMK",
+      "customerName": "",
+      "discountAmount": 0,
+      "discountAmountHigh": 0,
+      "discountAmountLow": 0,
+      "discountPercent": 0,
+      "finalTotal": 33000,
+      "finalTotalHigh": 33000,
+      "finalTotalLow": 33000,
+      "id": "quote-1776684606030-upsuso",
+      "lineItems": [
+        {
+          "id": "module-shared-platform-core-starter",
+          "included": true,
+          "highCost": 18000,
+          "lowCost": 12000,
+          "moduleCode": "SHARED_PLATFORM_CORE",
+          "moduleDescription": "The foundation that powers the whole solution. It handles secure access, user roles, core system setup, notifications, and the shared services every module depends on.",
+          "moduleId": "module-shared-platform-core",
+          "moduleName": "Platform Core",
+          "quotedPrice": 12000,
+          "selectedTier": "Starter",
+          "tierHighCost": 18000,
+          "tierLowCost": 12000,
+          "tierDescription": "Secure login, user access control, core system setup, email notifications, basic activity tracking"
+        },
+        {
+          "id": "module-admin-starter",
+          "included": true,
+          "highCost": 22000,
+          "lowCost": 15000,
+          "moduleCode": "ADMIN",
+          "moduleDescription": "The central control center for your internal team to manage employers, employees, distributors, products, approvals, and reporting.",
+          "moduleId": "module-admin",
+          "moduleName": "Admin Portal",
+          "quotedPrice": 15000,
+          "selectedTier": "Starter",
+          "tierHighCost": 22000,
+          "tierLowCost": 15000,
+          "tierDescription": "Manage users, employers, distributors, products, and applications; view basic reports"
+        },
+        {
+          "id": "module-employer-starter",
+          "included": true,
+          "highCost": 10000,
+          "lowCost": 6000,
+          "moduleCode": "EMPLOYER",
+          "moduleDescription": "A dedicated space for partner companies to manage employee access, verify staff, and view participation and repayment activity.",
+          "moduleId": "module-employer",
+          "moduleName": "Employer Portal",
+          "quotedPrice": 6000,
+          "selectedTier": "Starter",
+          "tierHighCost": 10000,
+          "tierLowCost": 6000,
+          "tierDescription": "Employer login, employee verification, employee list view, basic reporting"
+        }
+      ],
+      "midpointTotal": 33000,
+      "moduleSelections": {
+        "SHARED_PLATFORM_CORE": {
+          "included": true,
+          "selectedTier": "Starter"
+        },
+        "ADMIN": {
+          "included": true,
+          "selectedTier": "Starter"
+        },
+        "EMPLOYER": {
+          "included": true,
+          "selectedTier": "Starter"
+        },
+        "EMPLOYEE": {
+          "included": false,
+          "selectedTier": "Starter"
+        },
+        "DISTRIBUTOR": {
+          "included": false,
+          "selectedTier": "Starter"
+        },
+        "MOBILE_MONEY_INTEGRATION": {
+          "included": false,
+          "selectedTier": "Starter"
+        },
+        "AI_INTELLIGENCE_MODULE": {
+          "included": false,
+          "selectedTier": "AI Assist"
+        }
+      },
+      "projectName": "",
+      "quoteNumber": "QT-20260420-003",
+      "quoteType": "implementation",
+      "selectedTemplateId": "custom-package",
+      "submissionBlobPath": null,
+      "submissionBlobUrl": null,
+      "submittedAt": null,
+      "status": "draft",
+      "subtotal": 33000,
+      "subtotalHigh": 33000,
+      "subtotalLow": 33000,
+      "taxAmount": 0,
+      "taxAmountHigh": 0,
+      "taxAmountLow": 0,
+      "taxPercent": 0,
+      "updatedAt": "2026-04-20T11:30:06.030Z",
+      "warnings": []
+    },
+    "quoteId": "quote-1776684606030-upsuso",
+    "quoteNumber": "QT-20260420-003",
+    "submittedAt": "2026-04-20T11:30:06.031Z",
+    "total": 33000
+  }
+]

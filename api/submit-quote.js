@@ -1,4 +1,22 @@
+const { readSubmissions, saveSubmission } = require('../server/submissionStore');
+
 module.exports = async function handler(request, response) {
+  if (request.method === 'GET') {
+    try {
+      const submissions = await readSubmissions();
+
+      response.statusCode = 200;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ submissions }));
+    } catch (error) {
+      response.statusCode = 500;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ error: error.message }));
+    }
+
+    return;
+  }
+
   if (request.method !== 'POST') {
     response.statusCode = 405;
     response.setHeader('content-type', 'application/json');
@@ -14,26 +32,28 @@ module.exports = async function handler(request, response) {
     }
 
     const parsedBody = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
-    const {
+    const quote = parsedBody.quote || null;
+    const quoteId = parsedBody.quoteId || quote?.id;
+    const quoteNumber = parsedBody.quoteNumber || quote?.quoteNumber;
+    const submittedAt = parsedBody.submittedAt || new Date().toISOString();
+    const total = parsedBody.total ?? quote?.finalTotal ?? 0;
+
+    if (!quote || !quoteId || !quoteNumber) {
+      throw new Error('quote, quoteId, and quoteNumber are required.');
+    }
+
+    const savedPayload = await saveSubmission({
+      id: `submission-${quoteId}`,
+      quote,
       quoteId,
       quoteNumber,
-      submittedAt = new Date().toISOString(),
+      submittedAt,
       total,
-    } = parsedBody;
-
-    if (!quoteId || !quoteNumber) {
-      throw new Error('quoteId and quoteNumber are required.');
-    }
+    });
 
     response.statusCode = 200;
     response.setHeader('content-type', 'application/json');
-    response.end(JSON.stringify({
-      quoteId,
-      quoteNumber,
-      receiptId: `submission-${quoteId}`,
-      submittedAt,
-      total,
-    }));
+    response.end(JSON.stringify(savedPayload));
   } catch (error) {
     response.statusCode = 500;
     response.setHeader('content-type', 'application/json');

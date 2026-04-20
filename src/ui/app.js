@@ -22,15 +22,7 @@ const {
 const { createMemoryStorage, createQuoteRepository } = require('../services/quoteRepository');
 
 function resolveStorage() {
-  try {
-    const probeKey = 'dynamic-quoting-system-storage-probe';
-    window.localStorage.setItem(probeKey, probeKey);
-    window.localStorage.removeItem(probeKey);
-
-    return window.localStorage;
-  } catch (error) {
-    return createMemoryStorage();
-  }
+  return createMemoryStorage();
 }
 
 function parseHashRoute(hashValue) {
@@ -413,12 +405,7 @@ function renderClientQuotationDocument(quote) {
 
 function renderBuilderView(state) {
   const draft = state.draft;
-  const submitLabel = state.submitStatus === 'submitted'
-    ? 'Submitted'
-    : state.isSubmitting
-      ? 'Submitting...'
-      : 'Submit configuration';
-  const submitButtonClass = `button ${state.submitStatus === 'submitted' ? 'button--secondary' : 'button--primary'} ${state.isSubmitting ? 'button--loading' : ''}`;
+  const submitButtonState = getSubmitButtonState(state);
 
   return `
     <form id="quote-builder-form" class="page-stack" novalidate>
@@ -458,16 +445,21 @@ function renderBuilderView(state) {
           <div class="panel-actions">
             <button
               type="button"
-              class="${submitButtonClass}"
+              class="${submitButtonState.className}"
               data-action="submit-quote"
-              ${state.isSubmitting || state.submitStatus === 'submitted' ? 'disabled aria-busy="true"' : ''}
+              ${submitButtonState.disabled ? 'disabled' : ''}
+              ${submitButtonState.busy ? 'aria-busy="true"' : ''}
             >
               <span class="button__spinner" aria-hidden="true"></span>
-              <span class="button__label">${escapeHtml(submitLabel)}</span>
+              <span class="button__label">${escapeHtml(submitButtonState.label)}</span>
             </button>
           </div>
         </div>
       </section>
+
+      <div id="uploaded-submissions">
+        ${renderUploadedSubmissions(state)}
+      </div>
     </form>
   `;
 }
@@ -483,13 +475,69 @@ function renderBuilderFeedback(state) {
   `;
 }
 
+function getSubmitButtonState(state) {
+  const label = state.submitStatus === 'submitted'
+    ? 'Submitted'
+    : state.isSubmitting
+      ? 'Submitting...'
+      : 'Submit configuration';
+  const className = `button ${state.submitStatus === 'submitted' ? 'button--secondary' : 'button--primary'} ${state.isSubmitting ? 'button--loading' : ''}`;
+
+  return {
+    busy: state.isSubmitting,
+    className,
+    disabled: state.isSubmitting || state.submitStatus === 'submitted',
+    label,
+  };
+}
+
+function renderUploadedSubmissions(state) {
+  if (state.uploadsLoading && state.uploadedSubmissions.length === 0) {
+    return `
+      <section class="panel panel--section">
+        <div class="empty-state">
+          <h3>Loading uploads</h3>
+          <p>Fetching uploaded configurations from the server.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="panel panel--section">
+      <div class="panel-heading">
+        <div>
+          <h2>Uploaded configurations</h2>
+          <p>${state.uploadsLoading ? 'Refreshing server uploads...' : 'Configurations that have completed server upload.'}</p>
+        </div>
+      </div>
+      ${state.uploadedSubmissions.length === 0 ? `
+        <div class="empty-state">
+          <h3>No uploads yet</h3>
+          <p>Submitted configurations will appear here after the upload completes.</p>
+        </div>
+      ` : `
+        <div class="detail-grid">
+          ${state.uploadedSubmissions.map((submission) => `
+            <article class="detail-card">
+              <span>${escapeHtml(submission.quoteNumber)}</span>
+              <strong>${escapeHtml(formatCurrency(submission.total, submission.quote?.currency || 'ZMK'))}</strong>
+              <p>${escapeHtml(formatDateTime(submission.submittedAt))}</p>
+            </article>
+          `).join('')}
+        </div>
+      `}
+    </section>
+  `;
+}
+
 function renderQuoteDetailView(quote) {
   if (!quote) {
     return `
       <section class="panel">
         <div class="empty-state">
           <h2>Quote not found</h2>
-          <p>The requested quote could not be loaded from local storage.</p>
+          <p>The requested quote could not be loaded from the current session.</p>
           <button type="button" class="button button--primary" data-action="new-quote">Back to builder</button>
         </div>
       </section>
@@ -546,7 +594,9 @@ function renderShell(state, route, content) {
   return `
     <div class="shell">
       <main class="main-content">
-        ${renderNotice(state.notice)}
+        <div id="notice-host">
+          ${renderNotice(state.notice)}
+        </div>
         ${content}
       </main>
     </div>
@@ -565,6 +615,9 @@ function createQuoteApp(rootElement) {
     }),
     isSubmitting: false,
     submitStatus: 'idle',
+    uploadedSubmissions: [],
+    uploadsLoaded: false,
+    uploadsLoading: false,
     submissionErrors: [],
     validation: validateQuoteDraft(createEmptyQuoteDraft()),
   };
@@ -595,7 +648,7 @@ function createQuoteApp(rootElement) {
     const storedQuote = state.repository.getQuoteById(quoteId);
 
     if (!storedQuote) {
-      setNotice('error', 'That quote could not be loaded from local storage.');
+      setNotice('error', 'That quote could not be loaded from the current session.');
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
       state.submitStatus = 'idle';
@@ -627,6 +680,9 @@ function createQuoteApp(rootElement) {
       loadDraftForRoute(state.currentRoute.quoteId);
       rootElement.innerHTML = renderShell(state, state.currentRoute, renderBuilderView(state));
       syncBuilderPanels();
+      if (!state.uploadsLoaded) {
+        loadUploadedSubmissions();
+      }
       return;
     }
 
@@ -684,7 +740,14 @@ function createQuoteApp(rootElement) {
     refreshBuilderRowState();
 
     const feedbackNode = rootElement.querySelector('#builder-feedback');
+    const noticeNode = rootElement.querySelector('#notice-host');
     const submitBarTotalNode = rootElement.querySelector('.builder-submit-bar__total strong');
+    const submitButton = rootElement.querySelector('[data-action="submit-quote"]');
+    const uploadedSubmissionsNode = rootElement.querySelector('#uploaded-submissions');
+
+    if (noticeNode) {
+      noticeNode.innerHTML = renderNotice(state.notice);
+    }
 
     if (feedbackNode) {
       feedbackNode.innerHTML = renderBuilderFeedback(state);
@@ -692,6 +755,57 @@ function createQuoteApp(rootElement) {
 
     if (submitBarTotalNode) {
       submitBarTotalNode.textContent = formatCurrency(state.preview.finalTotal, state.draft.currency);
+    }
+
+    if (submitButton) {
+      const submitButtonState = getSubmitButtonState(state);
+      const labelNode = submitButton.querySelector('.button__label');
+
+      submitButton.className = submitButtonState.className;
+      submitButton.disabled = submitButtonState.disabled;
+
+      if (submitButtonState.busy) {
+        submitButton.setAttribute('aria-busy', 'true');
+      } else {
+        submitButton.removeAttribute('aria-busy');
+      }
+
+      if (labelNode) {
+        labelNode.textContent = submitButtonState.label;
+      }
+    }
+
+    if (uploadedSubmissionsNode) {
+      uploadedSubmissionsNode.innerHTML = renderUploadedSubmissions(state);
+    }
+  }
+
+  async function loadUploadedSubmissions(options = {}) {
+    if (state.uploadsLoading || (state.uploadsLoaded && !options.force)) {
+      return;
+    }
+
+    state.uploadsLoading = true;
+    syncBuilderPanels();
+
+    try {
+      const response = await fetch('/api/submit-quote');
+      const responseBody = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(responseBody.error || `Upload fetch failed with status ${response.status}.`);
+      }
+
+      state.uploadedSubmissions = Array.isArray(responseBody.submissions)
+        ? responseBody.submissions
+        : [];
+      state.uploadsLoaded = true;
+    } catch (error) {
+      console.error('[uploaded-configurations] load failed', error);
+      setNotice('error', error.message);
+    } finally {
+      state.uploadsLoading = false;
+      syncBuilderPanels();
     }
   }
 
@@ -743,39 +857,6 @@ function createQuoteApp(rootElement) {
     syncBuilderPanels();
   }
 
-  function persistQuote(mode) {
-    syncDraftFromForm();
-
-    try {
-      const savedQuote = state.repository.saveQuote(state.draft, {
-        mode,
-        quoteId: state.currentBuilderQuoteId,
-      });
-
-      state.currentBuilderQuoteId = savedQuote.id;
-      state.draft = quoteRecordToDraft(savedQuote);
-      state.submissionErrors = [];
-      updateDraftDerivedState();
-      setNotice(
-        'success',
-        mode === 'draft'
-          ? `${savedQuote.quoteNumber} saved locally in this browser.`
-          : `${savedQuote.quoteNumber} submitted successfully.`,
-      );
-
-      if (mode === 'submitted') {
-        navigate(`#/quote/${savedQuote.id}`);
-        return;
-      }
-
-      navigate(`#/builder/${savedQuote.id}`);
-    } catch (error) {
-      state.submissionErrors = error.validationErrors || [error.message];
-      setNotice('error', state.submissionErrors.join(' '));
-      syncBuilderPanels();
-    }
-  }
-
   async function submitQuote(mode = 'submitted', quoteId = null) {
     if (state.isSubmitting) {
       return;
@@ -798,21 +879,23 @@ function createQuoteApp(rootElement) {
     });
 
     try {
-      logSubmitStep('saving-draft-quote');
-      const savedQuote = state.repository.saveQuote(state.draft, {
-        mode,
+      logSubmitStep('saving-pending-quote');
+      const pendingQuote = state.repository.saveQuote(state.draft, {
+        mode: 'draft',
         quoteId: quoteId || state.currentBuilderQuoteId,
       });
+      state.currentBuilderQuoteId = pendingQuote.id;
       const response = await fetch('/api/submit-quote', {
         headers: {
           'content-type': 'application/json',
         },
         method: 'POST',
         body: JSON.stringify({
-          quoteId: savedQuote.id,
-          quoteNumber: savedQuote.quoteNumber,
+          quote: pendingQuote,
+          quoteId: pendingQuote.id,
+          quoteNumber: pendingQuote.quoteNumber,
           submittedAt: new Date().toISOString(),
-          total: savedQuote.finalTotal,
+          total: pendingQuote.finalTotal,
         }),
       });
       const responseBody = await response.json().catch(() => ({}));
@@ -822,21 +905,33 @@ function createQuoteApp(rootElement) {
       }
 
       logSubmitStep('submit-upload-complete', {
-        id: savedQuote.id,
-        quoteNumber: savedQuote.quoteNumber,
-        status: savedQuote.status,
-        receiptId: responseBody.receiptId,
+        id: pendingQuote.id,
+        quoteNumber: pendingQuote.quoteNumber,
+        receiptId: responseBody.submission ? responseBody.submission.id : null,
       });
 
-      state.currentBuilderQuoteId = savedQuote.id;
-      state.draft = quoteRecordToDraft(savedQuote);
+      const submittedQuote = state.repository.saveQuote(state.draft, {
+        mode,
+        quoteId: pendingQuote.id,
+        submissionBlobPath: responseBody.submission ? responseBody.submission.blobPath : null,
+        submissionBlobUrl: responseBody.submission
+          ? (responseBody.submission.downloadUrl || responseBody.submission.blobUrl || null)
+          : null,
+      });
+
+      state.currentBuilderQuoteId = submittedQuote.id;
+      state.draft = quoteRecordToDraft(submittedQuote);
       state.submissionErrors = [];
       state.submitStatus = 'submitted';
+      state.uploadedSubmissions = Array.isArray(responseBody.submissions)
+        ? responseBody.submissions
+        : state.uploadedSubmissions;
+      state.uploadsLoaded = true;
       updateDraftDerivedState();
       logSubmitStep('submit-success', {
-        quoteId: savedQuote.id,
-        quoteNumber: savedQuote.quoteNumber,
-        receiptId: responseBody.receiptId,
+        quoteId: submittedQuote.id,
+        quoteNumber: submittedQuote.quoteNumber,
+        submissionId: responseBody.submission ? responseBody.submission.id : null,
       });
       state.isSubmitting = false;
       syncBuilderPanels();
@@ -902,13 +997,14 @@ function createQuoteApp(rootElement) {
         const existingQuote = state.repository.getQuoteById(quoteId);
 
         if (!existingQuote) {
-          setNotice('error', 'That quote could not be loaded from local storage.');
+          setNotice('error', 'That quote could not be loaded from the current session.');
           renderCurrentRoute();
           return;
         }
 
         state.currentBuilderQuoteId = existingQuote.id;
         state.draft = quoteRecordToDraft(existingQuote);
+        state.submitStatus = existingQuote.status === 'submitted' ? 'submitted' : 'idle';
         state.submissionErrors = [];
         updateDraftDerivedState();
       }
