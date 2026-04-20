@@ -1,40 +1,5 @@
 const path = require('path');
-const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
-const { put } = require('@vercel/blob');
-
-function loadLocalEnv(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return {};
-  }
-
-  return fs.readFileSync(filePath, 'utf8')
-    .split('\n')
-    .reduce((accumulator, line) => {
-      const trimmedLine = line.trim();
-
-      if (!trimmedLine || trimmedLine.startsWith('#')) {
-        return accumulator;
-      }
-
-      const equalsIndex = trimmedLine.indexOf('=');
-
-      if (equalsIndex === -1) {
-        return accumulator;
-      }
-
-      const key = trimmedLine.slice(0, equalsIndex).trim();
-      const rawValue = trimmedLine.slice(equalsIndex + 1).trim();
-      const unquotedValue = rawValue.replace(/^['"]|['"]$/g, '');
-
-      accumulator[key] = unquotedValue;
-      return accumulator;
-    }, {});
-}
-
-const localEnv = loadLocalEnv(path.resolve(__dirname, '.env.local'));
-const blobToken = localEnv.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || '';
 
 module.exports = {
   mode: 'development',
@@ -60,38 +25,25 @@ module.exports = {
           body += chunk;
         });
 
-        request.on('end', async () => {
+        request.on('end', () => {
           try {
-            if (!blobToken) {
-              throw new Error('Missing BLOB_READ_WRITE_TOKEN for Blob submission.');
-            }
-
             const parsedBody = body ? JSON.parse(body) : {};
-            const blobPath = parsedBody.blobPath;
-            const quote = parsedBody.quote;
+            const quoteId = parsedBody.quoteId;
+            const quoteNumber = parsedBody.quoteNumber;
             const submittedAt = parsedBody.submittedAt || new Date().toISOString();
+            const total = parsedBody.total;
 
-            if (!blobPath || !quote) {
-              throw new Error('blobPath and quote are required.');
+            if (!quoteId || !quoteNumber) {
+              throw new Error('quoteId and quoteNumber are required.');
             }
-
-            const blobBody = JSON.stringify({
-              submittedAt,
-              quote,
-            }, null, 2);
-
-            const blobResult = await put(blobPath, blobBody, {
-              token: blobToken,
-              access: 'public',
-              contentType: 'application/json',
-            });
 
             response.setHeader('content-type', 'application/json');
             response.end(JSON.stringify({
-              blobPath: blobResult.pathname,
-              blobUrl: blobResult.url,
-              byteLength: Buffer.byteLength(blobBody, 'utf8'),
+              quoteId,
+              quoteNumber,
+              receiptId: `submission-${quoteId}`,
               submittedAt,
+              total,
             }));
           } catch (error) {
             response.statusCode = 500;

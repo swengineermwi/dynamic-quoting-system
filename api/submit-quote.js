@@ -1,5 +1,3 @@
-const { put } = require('@vercel/blob');
-
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     response.statusCode = 405;
@@ -16,34 +14,25 @@ module.exports = async function handler(request, response) {
     }
 
     const parsedBody = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
-    const { blobPath, quote, submittedAt = new Date().toISOString() } = parsedBody;
+    const {
+      quoteId,
+      quoteNumber,
+      submittedAt = new Date().toISOString(),
+      total,
+    } = parsedBody;
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      throw new Error('Missing BLOB_READ_WRITE_TOKEN.');
+    if (!quoteId || !quoteNumber) {
+      throw new Error('quoteId and quoteNumber are required.');
     }
-
-    if (!blobPath || !quote) {
-      throw new Error('blobPath and quote are required.');
-    }
-
-    const blobBody = JSON.stringify({
-      submittedAt,
-      quote,
-    }, null, 2);
-
-    const blobResult = await put(blobPath, blobBody, {
-      access: 'public',
-      contentType: 'application/json',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
 
     response.statusCode = 200;
     response.setHeader('content-type', 'application/json');
     response.end(JSON.stringify({
-      blobPath: blobResult.pathname,
-      blobUrl: blobResult.url,
-      byteLength: Buffer.byteLength(blobBody, 'utf8'),
+      quoteId,
+      quoteNumber,
+      receiptId: `submission-${quoteId}`,
       submittedAt,
+      total,
     }));
   } catch (error) {
     response.statusCode = 500;

@@ -413,8 +413,12 @@ function renderClientQuotationDocument(quote) {
 
 function renderBuilderView(state) {
   const draft = state.draft;
-  const submitLabel = state.isSubmitting ? 'Submitting...' : 'Submit configuration';
-  const submitButtonClass = `button button--primary ${state.isSubmitting ? 'button--loading' : ''}`;
+  const submitLabel = state.submitStatus === 'submitted'
+    ? 'Submitted'
+    : state.isSubmitting
+      ? 'Submitting...'
+      : 'Submit configuration';
+  const submitButtonClass = `button ${state.submitStatus === 'submitted' ? 'button--secondary' : 'button--primary'} ${state.isSubmitting ? 'button--loading' : ''}`;
 
   return `
     <form id="quote-builder-form" class="page-stack" novalidate>
@@ -456,7 +460,7 @@ function renderBuilderView(state) {
               type="button"
               class="${submitButtonClass}"
               data-action="submit-quote"
-              ${state.isSubmitting ? 'disabled aria-busy="true"' : ''}
+              ${state.isSubmitting || state.submitStatus === 'submitted' ? 'disabled aria-busy="true"' : ''}
             >
               <span class="button__spinner" aria-hidden="true"></span>
               <span class="button__label">${escapeHtml(submitLabel)}</span>
@@ -560,6 +564,7 @@ function createQuoteApp(rootElement) {
       storage: resolveStorage(),
     }),
     isSubmitting: false,
+    submitStatus: 'idle',
     submissionErrors: [],
     validation: validateQuoteDraft(createEmptyQuoteDraft()),
   };
@@ -581,6 +586,7 @@ function createQuoteApp(rootElement) {
     if (!quoteId) {
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
+      state.submitStatus = 'idle';
       state.submissionErrors = [];
       updateDraftDerivedState();
       return;
@@ -592,6 +598,7 @@ function createQuoteApp(rootElement) {
       setNotice('error', 'That quote could not be loaded from local storage.');
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
+      state.submitStatus = 'idle';
       state.submissionErrors = [];
       updateDraftDerivedState();
       return;
@@ -599,6 +606,7 @@ function createQuoteApp(rootElement) {
 
     state.currentBuilderQuoteId = quoteId;
     state.draft = quoteRecordToDraft(storedQuote);
+    state.submitStatus = storedQuote.status === 'submitted' ? 'submitted' : 'idle';
     state.submissionErrors = [];
     updateDraftDerivedState();
   }
@@ -717,6 +725,7 @@ function createQuoteApp(rootElement) {
     };
 
     state.submissionErrors = [];
+    state.submitStatus = 'idle';
     updateDraftDerivedState();
     syncBuilderPanels();
   }
@@ -728,6 +737,7 @@ function createQuoteApp(rootElement) {
       selectedTemplateId: templateId,
     };
     state.submissionErrors = [];
+    state.submitStatus = 'idle';
     updateDraftDerivedState();
     rootElement.innerHTML = renderShell(state, { name: 'builder', quoteId: state.currentBuilderQuoteId }, renderBuilderView(state));
     syncBuilderPanels();
@@ -777,6 +787,7 @@ function createQuoteApp(rootElement) {
       currentBuilderQuoteId: state.currentBuilderQuoteId,
     });
     state.isSubmitting = true;
+    state.submitStatus = 'idle';
     syncBuilderPanels();
     syncDraftFromForm();
     logSubmitStep('draft-synced', {
@@ -792,31 +803,52 @@ function createQuoteApp(rootElement) {
         mode,
         quoteId: quoteId || state.currentBuilderQuoteId,
       });
-      logSubmitStep('submit-saved-locally', {
+      const response = await fetch('/api/submit-quote', {
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify({
+          quoteId: savedQuote.id,
+          quoteNumber: savedQuote.quoteNumber,
+          submittedAt: new Date().toISOString(),
+          total: savedQuote.finalTotal,
+        }),
+      });
+      const responseBody = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(responseBody.error || `Submission failed with status ${response.status}.`);
+      }
+
+      logSubmitStep('submit-upload-complete', {
         id: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
         status: savedQuote.status,
+        receiptId: responseBody.receiptId,
       });
 
       state.currentBuilderQuoteId = savedQuote.id;
       state.draft = quoteRecordToDraft(savedQuote);
       state.submissionErrors = [];
+      state.submitStatus = 'submitted';
       updateDraftDerivedState();
       logSubmitStep('submit-success', {
         quoteId: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
+        receiptId: responseBody.receiptId,
       });
       state.isSubmitting = false;
       syncBuilderPanels();
       state.notice = null;
       window.alert('Successfully submitted configuration.');
-      navigate('#/builder');
     } catch (error) {
       logSubmitStep('submit-failed', {
         message: error.message,
         validationErrors: error.validationErrors || null,
       });
       state.submissionErrors = error.validationErrors || [error.message];
+      state.submitStatus = 'idle';
       setNotice('error', state.submissionErrors.join(' '));
       syncBuilderPanels();
     } finally {
@@ -853,6 +885,7 @@ function createQuoteApp(rootElement) {
       state.notice = null;
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
+      state.submitStatus = 'idle';
       state.submissionErrors = [];
       updateDraftDerivedState();
       navigate('#/builder');
