@@ -162,27 +162,6 @@ function renderConfigurationRows(modules, draft) {
   }).join('');
 }
 
-function renderBuilderStepper(currentStep) {
-  const steps = [
-    { number: 1, title: 'Configuration' },
-    { number: 2, title: 'Quotation Details' },
-    { number: 3, title: 'Review' },
-  ];
-
-  return `
-    <div class="steps" aria-label="Quotation builder steps">
-      <ol class="steps__list">
-        ${steps.map((step) => `
-          <li class="steps__item ${currentStep === step.number ? 'steps__item--current' : ''} ${currentStep > step.number ? 'steps__item--complete' : ''}">
-            <span class="steps__label">${escapeHtml(step.title)}</span>
-            <span class="steps__circle">${step.number}</span>
-          </li>
-        `).join('')}
-      </ol>
-    </div>
-  `;
-}
-
 function renderMessageGroup(title, tone, items) {
   if (!items || items.length === 0) {
     return '';
@@ -344,13 +323,16 @@ function renderClientFacingTotals(quote) {
 }
 
 function renderClientQuotationDocument(quote) {
+  const projectName = quote.projectName || 'the selected implementation scope';
+  const customerName = quote.customerName || 'Not specified';
+
   return `
     <section class="quotation-document panel">
       <header class="quotation-document__header">
         <div>
           <p class="eyebrow">Quotation</p>
           <h2>Software implementation quotation</h2>
-          <p>This quotation covers the proposed implementation scope for ${escapeHtml(quote.projectName)}.</p>
+          <p>This quotation covers the proposed implementation scope for ${escapeHtml(projectName)}.</p>
         </div>
         <div class="quotation-document__meta">
           <div>
@@ -373,11 +355,11 @@ function renderClientQuotationDocument(quote) {
         <div class="quotation-document__two-column">
           <div>
             <span>Client</span>
-            <strong>${escapeHtml(quote.customerName)}</strong>
+            <strong>${escapeHtml(customerName)}</strong>
           </div>
           <div>
             <span>Project</span>
-            <strong>${escapeHtml(quote.projectName)}</strong>
+            <strong>${escapeHtml(projectName)}</strong>
           </div>
         </div>
       </section>
@@ -431,26 +413,12 @@ function renderClientQuotationDocument(quote) {
 
 function renderBuilderView(state) {
   const draft = state.draft;
-  const editingQuote = state.currentBuilderQuoteId ? state.repository.getQuoteById(state.currentBuilderQuoteId) : null;
-  const currentStep = state.builderStep || 1;
+  const submitLabel = state.isSubmitting ? 'Submitting...' : 'Submit configuration';
+  const submitButtonClass = `button button--primary ${state.isSubmitting ? 'button--loading' : ''}`;
 
   return `
-    <section class="page-header">
-      <div>
-        <p class="eyebrow">Quotation</p>
-        <h1>Software implementation quotation</h1>
-        <p>${editingQuote ? `Editing ${escapeHtml(editingQuote.quoteNumber)}` : 'Prepare a new quotation using the starting price for each selected tier.'}</p>
-      </div>
-    </section>
-
-    ${renderBuilderStepper(currentStep)}
-
     <form id="quote-builder-form" class="page-stack" novalidate>
-      <section class="panel panel--section builder-step ${currentStep === 1 ? 'builder-step--active' : ''}">
-        <div class="section-heading">
-          <h2>Configuration</h2>
-          <p>Select features, choose tiers, and review the starting quotation value.</p>
-        </div>
+      <section class="panel panel--section">
         <div class="field-grid builder-config-grid">
           <label class="field">
             <span>Package template</span>
@@ -475,66 +443,28 @@ function renderBuilderView(state) {
             </tbody>
           </table>
         </div>
-        <div class="panel-actions panel-actions--spread">
-          <button type="button" class="button button--ghost" data-action="reset-builder">Reset</button>
-          <div class="panel-actions">
-            <button type="button" class="button button--primary" data-action="next-step">Next</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel panel--section builder-step ${currentStep === 2 ? 'builder-step--active' : ''}">
-        <div class="section-heading">
-          <h2>Quotation details</h2>
-          <p>Capture the details that belong on the client-facing quotation.</p>
-        </div>
-        <div class="field-grid">
-          <label class="field">
-            <span>Customer name</span>
-            <input class="input-text" type="text" name="customerName" value="${escapeHtml(draft.customerName)}" placeholder="Partner organisation" autocomplete="off">
-          </label>
-          <label class="field">
-            <span>Project name</span>
-            <input class="input-text" type="text" name="projectName" value="${escapeHtml(draft.projectName)}" placeholder="Implementation scope name" autocomplete="off">
-          </label>
-        </div>
-        <div class="field-grid">
-          <label class="field field--full">
-            <span>Client assumptions</span>
-            <textarea class="input-textarea" name="assumptions" rows="4" placeholder="Scope assumptions, dependencies, rollout limits...">${escapeHtml(draft.assumptions)}</textarea>
-          </label>
-        </div>
-        <div class="panel-actions panel-actions--spread">
-          <button type="button" class="button button--ghost" data-action="previous-step">Back</button>
-          <div class="panel-actions">
-            <button type="button" class="button button--primary" data-action="next-step">Next</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel panel--section builder-step ${currentStep === 3 ? 'builder-step--active' : ''}">
-        <div class="section-heading">
-          <h2>Review quotation</h2>
-          <p>Review the quotation before generating the client-facing document.</p>
-        </div>
         <div id="builder-feedback">
           ${renderBuilderFeedback(state)}
         </div>
-        <div id="builder-summary">
-          ${renderPricingSummary(state.preview, draft.currency, draft)}
-        </div>
-        <div class="panel-actions panel-actions--spread">
-          <button type="button" class="button button--ghost" data-action="previous-step">Back</button>
+        <div class="builder-submit-bar">
+          <div class="builder-submit-bar__total">
+            <span>Total quotation</span>
+            <strong>${escapeHtml(formatCurrency(state.preview.finalTotal, draft.currency))}</strong>
+          </div>
           <div class="panel-actions">
-            <button type="button" class="button button--primary" data-action="submit-quote">Submit quotation</button>
+            <button
+              type="button"
+              class="${submitButtonClass}"
+              data-action="submit-quote"
+              ${state.isSubmitting ? 'disabled aria-busy="true"' : ''}
+            >
+              <span class="button__spinner" aria-hidden="true"></span>
+              <span class="button__label">${escapeHtml(submitLabel)}</span>
+            </button>
           </div>
         </div>
       </section>
     </form>
-
-    <div id="floating-summary-host">
-      ${renderFloatingSummary(state.preview, draft.currency)}
-    </div>
   `;
 }
 
@@ -623,15 +553,6 @@ function buildSubmissionPayload(quote) {
 function renderShell(state, route, content) {
   return `
     <div class="shell">
-      <header class="topbar no-print">
-        <div class="brand-block">
-          <strong>Software Implementation Quotations</strong>
-        </div>
-        <nav class="nav-links">
-          <button type="button" class="nav-link ${route.name === 'builder' ? 'nav-link--active' : ''}" data-action="new-quote">Builder</button>
-        </nav>
-      </header>
-
       <main class="main-content">
         ${renderNotice(state.notice)}
         ${content}
@@ -642,7 +563,6 @@ function renderShell(state, route, content) {
 
 function createQuoteApp(rootElement) {
   const state = {
-    builderStep: 1,
     currentBuilderQuoteId: null,
     currentRoute: null,
     draft: createEmptyQuoteDraft(),
@@ -651,6 +571,7 @@ function createQuoteApp(rootElement) {
     repository: createQuoteRepository({
       storage: resolveStorage(),
     }),
+    isSubmitting: false,
     submissionErrors: [],
     validation: validateQuoteDraft(createEmptyQuoteDraft()),
   };
@@ -669,8 +590,6 @@ function createQuoteApp(rootElement) {
   }
 
   function loadDraftForRoute(quoteId) {
-    state.builderStep = 1;
-
     if (!quoteId) {
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
@@ -769,19 +688,14 @@ function createQuoteApp(rootElement) {
     refreshBuilderRowState();
 
     const feedbackNode = rootElement.querySelector('#builder-feedback');
-    const summaryNode = rootElement.querySelector('#builder-summary');
-    const floatingSummaryHost = rootElement.querySelector('#floating-summary-host');
+    const submitBarTotalNode = rootElement.querySelector('.builder-submit-bar__total strong');
 
     if (feedbackNode) {
       feedbackNode.innerHTML = renderBuilderFeedback(state);
     }
 
-    if (summaryNode) {
-      summaryNode.innerHTML = renderPricingSummary(state.preview, state.draft.currency, state.draft);
-    }
-
-    if (floatingSummaryHost) {
-      floatingSummaryHost.innerHTML = renderFloatingSummary(state.preview, state.draft.currency);
+    if (submitBarTotalNode) {
+      submitBarTotalNode.textContent = formatCurrency(state.preview.finalTotal, state.draft.currency);
     }
   }
 
@@ -803,13 +717,13 @@ function createQuoteApp(rootElement) {
     }, {});
 
     state.draft = {
-      assumptions: String(formData.get('assumptions') || ''),
-      customerName: String(formData.get('customerName') || ''),
+      assumptions: state.draft.assumptions,
+      customerName: state.draft.customerName,
       createdBy: state.draft.createdBy,
       currency: state.draft.currency,
       discountPercent: state.draft.discountPercent,
       moduleSelections,
-      projectName: String(formData.get('projectName') || ''),
+      projectName: state.draft.projectName,
       selectedTemplateId: String(formData.get('selectedTemplateId') || DEFAULT_TEMPLATE_ID),
       taxPercent: state.draft.taxPercent,
     };
@@ -865,11 +779,17 @@ function createQuoteApp(rootElement) {
   }
 
   async function submitQuote(mode = 'submitted', quoteId = null) {
+    if (state.isSubmitting) {
+      return;
+    }
+
     logSubmitStep('submit-start', {
       mode,
       quoteId,
       currentBuilderQuoteId: state.currentBuilderQuoteId,
     });
+    state.isSubmitting = true;
+    syncBuilderPanels();
     syncDraftFromForm();
     logSubmitStep('draft-synced', {
       customerName: state.draft.customerName,
@@ -934,12 +854,13 @@ function createQuoteApp(rootElement) {
       state.draft = quoteRecordToDraft(savedQuote);
       state.submissionErrors = [];
       updateDraftDerivedState();
-      setNotice('success', `${savedQuote.quoteNumber} submitted.`);
       logSubmitStep('submit-success', {
         quoteId: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
       });
-      navigate(`#/quote/${savedQuote.id}`);
+      state.notice = null;
+      window.alert('Successfully submitted configuration.');
+      navigate('#/builder');
     } catch (error) {
       logSubmitStep('submit-failed', {
         message: error.message,
@@ -947,6 +868,9 @@ function createQuoteApp(rootElement) {
       });
       state.submissionErrors = error.validationErrors || [error.message];
       setNotice('error', state.submissionErrors.join(' '));
+      syncBuilderPanels();
+    } finally {
+      state.isSubmitting = false;
       syncBuilderPanels();
     }
   }
@@ -975,7 +899,6 @@ function createQuoteApp(rootElement) {
 
     if (action === 'new-quote') {
       state.notice = null;
-      state.builderStep = 1;
       state.currentBuilderQuoteId = null;
       state.draft = createEmptyQuoteDraft();
       state.submissionErrors = [];
@@ -986,22 +909,6 @@ function createQuoteApp(rootElement) {
 
     if (action === 'edit-quote') {
       navigate(`#/builder/${quoteId}`);
-      return;
-    }
-
-    if (action === 'next-step') {
-      syncDraftFromForm();
-      state.builderStep = Math.min(3, state.builderStep + 1);
-      rootElement.innerHTML = renderShell(state, { name: 'builder', quoteId: state.currentBuilderQuoteId }, renderBuilderView(state));
-      syncBuilderPanels();
-      return;
-    }
-
-    if (action === 'previous-step') {
-      syncDraftFromForm();
-      state.builderStep = Math.max(1, state.builderStep - 1);
-      rootElement.innerHTML = renderShell(state, { name: 'builder', quoteId: state.currentBuilderQuoteId }, renderBuilderView(state));
-      syncBuilderPanels();
       return;
     }
 
@@ -1022,17 +929,6 @@ function createQuoteApp(rootElement) {
       }
 
       await submitQuote('submitted', quoteId);
-      return;
-    }
-
-    if (action === 'reset-builder') {
-      state.notice = null;
-      state.builderStep = 1;
-      state.currentBuilderQuoteId = null;
-      state.draft = createEmptyQuoteDraft();
-      state.submissionErrors = [];
-      updateDraftDerivedState();
-      navigate('#/builder');
       return;
     }
 

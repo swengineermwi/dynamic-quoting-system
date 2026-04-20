@@ -216,14 +216,6 @@ function validateQuoteDraft(draft, catalog = MODULE_CATALOG, options = {}) {
   const pricing = calculateQuotePricing(draft, catalog);
   const errors = [];
 
-  if (!sanitizeText(draft.customerName)) {
-    errors.push('Customer name is required.');
-  }
-
-  if (!sanitizeText(draft.projectName)) {
-    errors.push('Project name is required.');
-  }
-
   if (!sanitizeText(draft.createdBy)) {
     errors.push('Created by is required.');
   }
