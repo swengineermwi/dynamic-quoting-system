@@ -806,6 +806,8 @@ function createQuoteApp(rootElement) {
         quoteId: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
       });
+      state.isSubmitting = false;
+      syncBuilderPanels();
       state.notice = null;
       window.alert('Successfully submitted configuration.');
       navigate('#/builder');
@@ -818,8 +820,10 @@ function createQuoteApp(rootElement) {
       setNotice('error', state.submissionErrors.join(' '));
       syncBuilderPanels();
     } finally {
-      state.isSubmitting = false;
-      syncBuilderPanels();
+      if (state.isSubmitting) {
+        state.isSubmitting = false;
+        syncBuilderPanels();
+      }
     }
   }
 
