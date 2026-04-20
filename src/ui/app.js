@@ -538,18 +538,6 @@ function renderQuoteDetailView(quote) {
   `;
 }
 
-function buildSubmissionPath(quote) {
-  const quoteNumber = String(quote.quoteNumber || 'quote').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  return `quotes/${quoteNumber}-${quote.id}.json`;
-}
-
-function buildSubmissionPayload(quote) {
-  return JSON.stringify({
-    submittedAt: new Date().toISOString(),
-    quote,
-  }, null, 2);
-}
-
 function renderShell(state, route, content) {
   return `
     <div class="shell">
@@ -800,54 +788,14 @@ function createQuoteApp(rootElement) {
 
     try {
       logSubmitStep('saving-draft-quote');
-      const draftQuote = state.repository.saveQuote(state.draft, {
+      const savedQuote = state.repository.saveQuote(state.draft, {
         mode,
         quoteId: quoteId || state.currentBuilderQuoteId,
       });
-      logSubmitStep('draft-quote-saved', {
-        id: draftQuote.id,
-        quoteNumber: draftQuote.quoteNumber,
-        status: draftQuote.status,
-      });
-
-      const blobPath = buildSubmissionPath(draftQuote);
-      const submissionPayload = buildSubmissionPayload(draftQuote);
-      logSubmitStep('submit-request-start', {
-        endpoint: '/api/submit-quote',
-        blobPath,
-        payloadSize: submissionPayload.length,
-      });
-      const response = await fetch('/api/submit-quote', {
-        headers: {
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify({
-          blobPath,
-          quote: draftQuote,
-          submittedAt: new Date().toISOString(),
-        }),
-      });
-      const responseBody = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(responseBody.error || `Submission failed with status ${response.status}.`);
-      }
-
-      logSubmitStep('submit-request-complete', responseBody);
-
-      logSubmitStep('persist-submission-metadata');
-      const savedQuote = state.repository.saveQuote(state.draft, {
-        mode,
-        quoteId: draftQuote.id,
-        submissionBlobPath: responseBody.blobPath || blobPath,
-        submissionBlobUrl: responseBody.blobUrl || null,
-      });
-      logSubmitStep('submission-metadata-saved', {
+      logSubmitStep('submit-saved-locally', {
         id: savedQuote.id,
         quoteNumber: savedQuote.quoteNumber,
-        submissionBlobPath: savedQuote.submissionBlobPath,
-        submissionBlobUrl: savedQuote.submissionBlobUrl,
+        status: savedQuote.status,
       });
 
       state.currentBuilderQuoteId = savedQuote.id;
