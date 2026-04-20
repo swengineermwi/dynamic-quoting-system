@@ -86,7 +86,7 @@ All financial outputs are rounded to 2 decimal places.
 ## Persistence Model
 
 - Builder quote state is stored in memory for the current session only.
-- Submitted configurations are uploaded to Vercel Blob through `/api/submit-quote` and surfaced back in the UI under uploaded configurations.
+- Submitted configurations are uploaded to Vercel Blob through `/api/submit-quote`.
 
 ## Future Extension
 

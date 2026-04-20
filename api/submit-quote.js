@@ -1,22 +1,6 @@
-const { readSubmissions, saveSubmission } = require('../server/submissionStore');
+const { saveSubmission } = require('../server/submissionStore');
 
 module.exports = async function handler(request, response) {
-  if (request.method === 'GET') {
-    try {
-      const submissions = await readSubmissions();
-
-      response.statusCode = 200;
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ submissions }));
-    } catch (error) {
-      response.statusCode = 500;
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ error: error.message }));
-    }
-
-    return;
-  }
-
   if (request.method !== 'POST') {
     response.statusCode = 405;
     response.setHeader('content-type', 'application/json');

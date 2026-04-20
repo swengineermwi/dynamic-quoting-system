@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { get, list, put } = require('@vercel/blob');
+const { put } = require('@vercel/blob');
 
 const SUBMISSION_PREFIX = 'submitted-configurations/';
 
@@ -69,22 +69,7 @@ function buildSubmissionPath(payload) {
   return `${SUBMISSION_PREFIX}${dateSegment}/${quoteNumberSegment}-${quoteIdSegment}.json`;
 }
 
-async function readBlobJson(pathname) {
-  const blobResponse = await get(pathname, {
-    access: 'public',
-    useCache: false,
-    ...getBlobOptions(),
-  });
-
-  if (!blobResponse || blobResponse.statusCode !== 200) {
-    return null;
-  }
-
-  const rawValue = await new Response(blobResponse.stream).text();
-  return JSON.parse(rawValue);
-}
-
-function normalizeSubmissionRecord(record, blob) {
+function normalizeSubmissionRecord(record, blobResult) {
   return {
     id: record.id || `submission-${record.quoteId}`,
     quote: record.quote,
@@ -92,33 +77,10 @@ function normalizeSubmissionRecord(record, blob) {
     quoteNumber: record.quoteNumber,
     submittedAt: record.submittedAt,
     total: record.total,
-    blobPath: blob.pathname,
-    blobUrl: blob.url,
-    downloadUrl: blob.downloadUrl,
+    blobPath: blobResult.pathname,
+    blobUrl: blobResult.url,
+    downloadUrl: blobResult.downloadUrl,
   };
-}
-
-async function readSubmissions() {
-  const blobList = await list({
-    limit: 50,
-    prefix: SUBMISSION_PREFIX,
-    ...getBlobOptions(),
-  });
-  const submissions = await Promise.all(
-    blobList.blobs.map(async (blob) => {
-      const record = await readBlobJson(blob.pathname);
-
-      if (!record) {
-        return null;
-      }
-
-      return normalizeSubmissionRecord(record, blob);
-    }),
-  );
-
-  return submissions
-    .filter(Boolean)
-    .sort((left, right) => new Date(right.submittedAt) - new Date(left.submittedAt));
 }
 
 async function saveSubmission(payload) {
@@ -141,18 +103,14 @@ async function saveSubmission(payload) {
       ...getBlobOptions(),
     },
   );
-  const submission = normalizeSubmissionRecord(submissionRecord, blobResult);
-  const submissions = await readSubmissions();
 
   return {
-    submission,
-    submissions,
+    submission: normalizeSubmissionRecord(submissionRecord, blobResult),
   };
 }
 
 module.exports = {
   buildSubmissionPath,
-  readSubmissions,
   saveSubmission,
   sanitizePathSegment,
 };

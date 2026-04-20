@@ -456,10 +456,6 @@ function renderBuilderView(state) {
           </div>
         </div>
       </section>
-
-      <div id="uploaded-submissions">
-        ${renderUploadedSubmissions(state)}
-      </div>
     </form>
   `;
 }
@@ -489,46 +485,6 @@ function getSubmitButtonState(state) {
     disabled: state.isSubmitting || state.submitStatus === 'submitted',
     label,
   };
-}
-
-function renderUploadedSubmissions(state) {
-  if (state.uploadsLoading && state.uploadedSubmissions.length === 0) {
-    return `
-      <section class="panel panel--section">
-        <div class="empty-state">
-          <h3>Loading uploads</h3>
-          <p>Fetching uploaded configurations from the server.</p>
-        </div>
-      </section>
-    `;
-  }
-
-  return `
-    <section class="panel panel--section">
-      <div class="panel-heading">
-        <div>
-          <h2>Uploaded configurations</h2>
-          <p>${state.uploadsLoading ? 'Refreshing server uploads...' : 'Configurations that have completed server upload.'}</p>
-        </div>
-      </div>
-      ${state.uploadedSubmissions.length === 0 ? `
-        <div class="empty-state">
-          <h3>No uploads yet</h3>
-          <p>Submitted configurations will appear here after the upload completes.</p>
-        </div>
-      ` : `
-        <div class="detail-grid">
-          ${state.uploadedSubmissions.map((submission) => `
-            <article class="detail-card">
-              <span>${escapeHtml(submission.quoteNumber)}</span>
-              <strong>${escapeHtml(formatCurrency(submission.total, submission.quote?.currency || 'ZMK'))}</strong>
-              <p>${escapeHtml(formatDateTime(submission.submittedAt))}</p>
-            </article>
-          `).join('')}
-        </div>
-      `}
-    </section>
-  `;
 }
 
 function renderQuoteDetailView(quote) {
@@ -615,9 +571,6 @@ function createQuoteApp(rootElement) {
     }),
     isSubmitting: false,
     submitStatus: 'idle',
-    uploadedSubmissions: [],
-    uploadsLoaded: false,
-    uploadsLoading: false,
     submissionErrors: [],
     validation: validateQuoteDraft(createEmptyQuoteDraft()),
   };
@@ -680,9 +633,6 @@ function createQuoteApp(rootElement) {
       loadDraftForRoute(state.currentRoute.quoteId);
       rootElement.innerHTML = renderShell(state, state.currentRoute, renderBuilderView(state));
       syncBuilderPanels();
-      if (!state.uploadsLoaded) {
-        loadUploadedSubmissions();
-      }
       return;
     }
 
@@ -743,7 +693,6 @@ function createQuoteApp(rootElement) {
     const noticeNode = rootElement.querySelector('#notice-host');
     const submitBarTotalNode = rootElement.querySelector('.builder-submit-bar__total strong');
     const submitButton = rootElement.querySelector('[data-action="submit-quote"]');
-    const uploadedSubmissionsNode = rootElement.querySelector('#uploaded-submissions');
 
     if (noticeNode) {
       noticeNode.innerHTML = renderNotice(state.notice);
@@ -773,39 +722,6 @@ function createQuoteApp(rootElement) {
       if (labelNode) {
         labelNode.textContent = submitButtonState.label;
       }
-    }
-
-    if (uploadedSubmissionsNode) {
-      uploadedSubmissionsNode.innerHTML = renderUploadedSubmissions(state);
-    }
-  }
-
-  async function loadUploadedSubmissions(options = {}) {
-    if (state.uploadsLoading || (state.uploadsLoaded && !options.force)) {
-      return;
-    }
-
-    state.uploadsLoading = true;
-    syncBuilderPanels();
-
-    try {
-      const response = await fetch('/api/submit-quote');
-      const responseBody = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(responseBody.error || `Upload fetch failed with status ${response.status}.`);
-      }
-
-      state.uploadedSubmissions = Array.isArray(responseBody.submissions)
-        ? responseBody.submissions
-        : [];
-      state.uploadsLoaded = true;
-    } catch (error) {
-      console.error('[uploaded-configurations] load failed', error);
-      setNotice('error', error.message);
-    } finally {
-      state.uploadsLoading = false;
-      syncBuilderPanels();
     }
   }
 
@@ -923,10 +839,6 @@ function createQuoteApp(rootElement) {
       state.draft = quoteRecordToDraft(submittedQuote);
       state.submissionErrors = [];
       state.submitStatus = 'submitted';
-      state.uploadedSubmissions = Array.isArray(responseBody.submissions)
-        ? responseBody.submissions
-        : state.uploadedSubmissions;
-      state.uploadsLoaded = true;
       updateDraftDerivedState();
       logSubmitStep('submit-success', {
         quoteId: submittedQuote.id,
