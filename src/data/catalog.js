@@ -293,12 +293,146 @@ const SUPPORTED_CURRENCIES = ['ZMK'];
 const QUOTE_STATUSES = ['draft', 'submitted', 'approved', 'archived'];
 const DEFAULT_TEMPLATE_ID = 'custom-package';
 
+const WORKFLOW_MODULE_CATALOG = [
+  {
+    id: 'module-inventory-management',
+    code: 'INVENTORY_MANAGEMENT',
+    name: 'Inventory Management',
+    description: 'Controls stock issuance, stock, receipts, and inventory levels.',
+    isOptional: false,
+    isActive: true,
+    tiers: [
+      {
+        id: 'tier-inventory-basic',
+        tierName: 'Starter',
+        lowCost: 8000,
+        highCost: 12000,
+        description: 'Basic stock issuance and receipts',
+      },
+      {
+        id: 'tier-inventory-standard',
+        tierName: 'Growth',
+        lowCost: 12000,
+        highCost: 20000,
+        description: 'Advanced inventory levels tracking and alerts',
+      },
+      {
+        id: 'tier-inventory-advanced',
+        tierName: 'Enterprise',
+        lowCost: 20000,
+        highCost: 35000,
+        description: 'Multi-warehouse stock control and full integrations',
+      },
+    ],
+  },
+  {
+    id: 'module-approval-automation',
+    code: 'APPROVAL_AUTOMATION',
+    name: 'Approval Automation',
+    description: 'Automates approval processes between departments.',
+    isOptional: true,
+    isActive: true,
+    tiers: [
+      {
+        id: 'tier-approval-basic',
+        tierName: 'Starter',
+        lowCost: 5000,
+        highCost: 8000,
+        description: 'Standard 2-step approvals',
+      },
+      {
+        id: 'tier-approval-standard',
+        tierName: 'Growth',
+        lowCost: 8000,
+        highCost: 15000,
+        description: 'Multi-step conditional approvals',
+      },
+      {
+        id: 'tier-approval-advanced',
+        tierName: 'Enterprise',
+        lowCost: 15000,
+        highCost: 25000,
+        description: 'Custom approval workflows and audit trails',
+      },
+    ],
+  },
+  {
+    id: 'module-integration-hub',
+    code: 'INTEGRATION_HUB',
+    name: 'Department Integration Hub',
+    description: 'Integrates stores, procurement, finance, HR, and other departments into one system.',
+    isOptional: false,
+    isActive: true,
+    tiers: [
+      {
+        id: 'tier-integration-basic',
+        tierName: 'Starter',
+        lowCost: 10000,
+        highCost: 15000,
+        description: 'Core integration with finance and HR',
+      },
+      {
+        id: 'tier-integration-standard',
+        tierName: 'Growth',
+        lowCost: 15000,
+        highCost: 25000,
+        description: 'Adds procurement and stores integration',
+      },
+      {
+        id: 'tier-integration-advanced',
+        tierName: 'Enterprise',
+        lowCost: 25000,
+        highCost: 40000,
+        description: 'Full ecosystem integration with external APIs',
+      },
+    ],
+  },
+];
+
+const WORKFLOW_QUOTE_TEMPLATES = [
+  {
+    id: 'workflow-standard-package',
+    name: 'Workflow Standard',
+    description: 'Balanced workflow setup with inventory and integrations.',
+    defaultModuleTierMap: {
+      INVENTORY_MANAGEMENT: { included: true, tier: 'Starter' },
+      APPROVAL_AUTOMATION: { included: false, tier: 'Starter' },
+      INTEGRATION_HUB: { included: true, tier: 'Starter' },
+    },
+  },
+  {
+    id: 'workflow-advanced-package',
+    name: 'Workflow Advanced',
+    description: 'Full automated workflow system for large enterprises.',
+    defaultModuleTierMap: {
+      INVENTORY_MANAGEMENT: { included: true, tier: 'Enterprise' },
+      APPROVAL_AUTOMATION: { included: true, tier: 'Enterprise' },
+      INTEGRATION_HUB: { included: true, tier: 'Enterprise' },
+    },
+  },
+  {
+    id: 'workflow-custom-package',
+    name: 'Workflow Custom',
+    description: 'Editable starting point for custom workflow setups.',
+    defaultModuleTierMap: {
+      INVENTORY_MANAGEMENT: { included: true, tier: 'Starter' },
+      APPROVAL_AUTOMATION: { included: false, tier: 'Starter' },
+      INTEGRATION_HUB: { included: false, tier: 'Starter' },
+    },
+  },
+];
+
+const DEFAULT_WORKFLOW_TEMPLATE_ID = 'workflow-custom-package';
+
 module.exports = {
   CLIENT_QUOTATION_DEFAULTS,
   DEFAULT_TEMPLATE_ID,
+  DEFAULT_WORKFLOW_TEMPLATE_ID,
   MODULE_CATALOG,
+  WORKFLOW_MODULE_CATALOG,
   QUOTE_STATUSES,
   QUOTE_TEMPLATES,
+  WORKFLOW_QUOTE_TEMPLATES,
   SUPPORTED_CURRENCIES,
   USER_OPTIONS,
 };

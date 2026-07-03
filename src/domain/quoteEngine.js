@@ -1,8 +1,11 @@
 const {
   DEFAULT_TEMPLATE_ID,
+  DEFAULT_WORKFLOW_TEMPLATE_ID,
   MODULE_CATALOG,
+  WORKFLOW_MODULE_CATALOG,
   QUOTE_STATUSES,
   QUOTE_TEMPLATES,
+  WORKFLOW_QUOTE_TEMPLATES,
   SUPPORTED_CURRENCIES,
   USER_OPTIONS,
 } = require('../data/catalog');
@@ -18,8 +21,8 @@ function sanitizeText(value) {
   return String(value || '').trim();
 }
 
-function cloneSelections(moduleSelections, catalog = MODULE_CATALOG) {
-  const fallbackSelections = buildModuleSelectionsFromTemplate(DEFAULT_TEMPLATE_ID, catalog);
+function cloneSelections(moduleSelections, catalog = MODULE_CATALOG, defaultTemplateId = DEFAULT_TEMPLATE_ID, templates = QUOTE_TEMPLATES) {
+  const fallbackSelections = buildModuleSelectionsFromTemplate(defaultTemplateId, catalog, templates, defaultTemplateId);
 
   return catalog.reduce((accumulator, moduleConfig) => {
     const existingSelection = moduleSelections && moduleSelections[moduleConfig.code];
@@ -35,9 +38,9 @@ function cloneSelections(moduleSelections, catalog = MODULE_CATALOG) {
   }, {});
 }
 
-function findTemplateById(templateId, templates = QUOTE_TEMPLATES) {
+function findTemplateById(templateId, templates = QUOTE_TEMPLATES, defaultTemplateId = DEFAULT_TEMPLATE_ID) {
   return templates.find((template) => template.id === templateId)
-    || templates.find((template) => template.id === DEFAULT_TEMPLATE_ID)
+    || templates.find((template) => template.id === defaultTemplateId)
     || templates[0];
 }
 
@@ -45,8 +48,9 @@ function buildModuleSelectionsFromTemplate(
   templateId = DEFAULT_TEMPLATE_ID,
   catalog = MODULE_CATALOG,
   templates = QUOTE_TEMPLATES,
+  defaultTemplateId = DEFAULT_TEMPLATE_ID,
 ) {
-  const template = findTemplateById(templateId, templates);
+  const template = findTemplateById(templateId, templates, defaultTemplateId);
 
   return catalog.reduce((accumulator, moduleConfig) => {
     const templateConfig = template.defaultModuleTierMap[moduleConfig.code] || {};
@@ -62,9 +66,14 @@ function buildModuleSelectionsFromTemplate(
 }
 
 function createEmptyQuoteDraft(options = {}) {
-  const templateId = options.templateId || DEFAULT_TEMPLATE_ID;
+  const systemType = options.systemType || 'hire-purchase';
+  const defaultTemplateId = systemType === 'workflow-management' ? DEFAULT_WORKFLOW_TEMPLATE_ID : DEFAULT_TEMPLATE_ID;
+  const catalog = systemType === 'workflow-management' ? WORKFLOW_MODULE_CATALOG : MODULE_CATALOG;
+  const templates = systemType === 'workflow-management' ? WORKFLOW_QUOTE_TEMPLATES : QUOTE_TEMPLATES;
+  const templateId = options.templateId || defaultTemplateId;
 
   return {
+    systemType,
     customerName: '',
     projectName: '',
     currency: SUPPORTED_CURRENCIES[0],
@@ -73,7 +82,7 @@ function createEmptyQuoteDraft(options = {}) {
     assumptions: '',
     createdBy: USER_OPTIONS[0].id,
     selectedTemplateId: templateId,
-    moduleSelections: buildModuleSelectionsFromTemplate(templateId, MODULE_CATALOG, QUOTE_TEMPLATES),
+    moduleSelections: buildModuleSelectionsFromTemplate(templateId, catalog, templates, defaultTemplateId),
   };
 }
 
@@ -81,8 +90,17 @@ function quoteRecordToDraft(quoteRecord, catalog = MODULE_CATALOG) {
   if (!quoteRecord) {
     return createEmptyQuoteDraft();
   }
+  
+  const systemType = quoteRecord.systemType || 'hire-purchase';
+  const defaultTemplateId = systemType === 'workflow-management' ? DEFAULT_WORKFLOW_TEMPLATE_ID : DEFAULT_TEMPLATE_ID;
+  const usedCatalog = systemType === 'workflow-management' ? WORKFLOW_MODULE_CATALOG : MODULE_CATALOG;
+
+  // If user explicitly passed a catalog, use it (for backwards compatibility), else use system default.
+  // Wait, if catalog is exactly MODULE_CATALOG, we should switch based on systemType.
+  const resolvedCatalog = (catalog === MODULE_CATALOG) ? usedCatalog : catalog;
 
   return {
+    systemType,
     customerName: quoteRecord.customerName || '',
     projectName: quoteRecord.projectName || '',
     currency: SUPPORTED_CURRENCIES[0],
@@ -90,8 +108,8 @@ function quoteRecordToDraft(quoteRecord, catalog = MODULE_CATALOG) {
     taxPercent: 0,
     assumptions: quoteRecord.assumptions || '',
     createdBy: quoteRecord.createdBy || USER_OPTIONS[0].id,
-    selectedTemplateId: quoteRecord.selectedTemplateId || DEFAULT_TEMPLATE_ID,
-    moduleSelections: cloneSelections(quoteRecord.moduleSelections, catalog),
+    selectedTemplateId: quoteRecord.selectedTemplateId || defaultTemplateId,
+    moduleSelections: cloneSelections(quoteRecord.moduleSelections, resolvedCatalog, defaultTemplateId, systemType === 'workflow-management' ? WORKFLOW_QUOTE_TEMPLATES : QUOTE_TEMPLATES),
   };
 }
 

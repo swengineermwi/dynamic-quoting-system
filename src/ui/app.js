@@ -1,9 +1,20 @@
 const {
   CLIENT_QUOTATION_DEFAULTS,
   DEFAULT_TEMPLATE_ID,
+  DEFAULT_WORKFLOW_TEMPLATE_ID,
   MODULE_CATALOG,
+  WORKFLOW_MODULE_CATALOG,
   QUOTE_TEMPLATES,
+  WORKFLOW_QUOTE_TEMPLATES,
 } = require('../data/catalog');
+
+function getCatalog(systemType) {
+  return systemType === 'workflow-management' ? WORKFLOW_MODULE_CATALOG : MODULE_CATALOG;
+}
+
+function getTemplates(systemType) {
+  return systemType === 'workflow-management' ? WORKFLOW_QUOTE_TEMPLATES : QUOTE_TEMPLATES;
+}
 const {
   buildModuleSelectionsFromTemplate,
   calculateQuotePricing,
@@ -66,8 +77,8 @@ function renderNotice(notice) {
   `;
 }
 
-function renderTemplateOptions(selectedTemplateId) {
-  return QUOTE_TEMPLATES.map((template) => `
+function renderTemplateOptions(selectedTemplateId, templates) {
+  return templates.map((template) => `
       <option value="${template.id}" ${selectedTemplateId === template.id ? 'selected' : ''}>
         ${escapeHtml(template.name)}
       </option>
@@ -414,7 +425,7 @@ function renderBuilderView(state) {
           <label class="field">
             <span>Package template</span>
             <select class="input-select" name="selectedTemplateId">
-              ${renderTemplateOptions(draft.selectedTemplateId)}
+              ${renderTemplateOptions(draft.selectedTemplateId, getTemplates(state.activeSystem))}
             </select>
           </label>
         </div>
@@ -430,7 +441,7 @@ function renderBuilderView(state) {
               </tr>
             </thead>
             <tbody>
-              ${renderConfigurationRows(MODULE_CATALOG, draft)}
+              ${renderConfigurationRows(getCatalog(state.activeSystem), draft)}
             </tbody>
           </table>
         </div>
@@ -549,6 +560,13 @@ function renderQuoteDetailView(quote) {
 function renderShell(state, route, content) {
   return `
     <div class="shell">
+      <header class="app-header no-print">
+        <h1>Dynamic Quoting System</h1>
+        <nav class="system-tabs" style="margin-top: 1rem; display: flex; gap: 1rem;">
+          <button type="button" class="button ${state.activeSystem === 'hire-purchase' ? 'button--primary' : 'button--ghost'}" data-action="switch-system" data-system="hire-purchase">Hire-Purchase Software</button>
+          <button type="button" class="button ${state.activeSystem === 'workflow-management' ? 'button--primary' : 'button--ghost'}" data-action="switch-system" data-system="workflow-management">Workflow Management System</button>
+        </nav>
+      </header>
       <main class="main-content">
         <div id="notice-host">
           ${renderNotice(state.notice)}
@@ -560,19 +578,21 @@ function renderShell(state, route, content) {
 }
 
 function createQuoteApp(rootElement) {
+  const defaultSystem = 'hire-purchase';
   const state = {
+    activeSystem: defaultSystem,
     currentBuilderQuoteId: null,
     currentRoute: null,
-    draft: createEmptyQuoteDraft(),
+    draft: createEmptyQuoteDraft({ systemType: defaultSystem }),
     notice: null,
-    preview: calculateQuotePricing(createEmptyQuoteDraft()),
+    preview: calculateQuotePricing(createEmptyQuoteDraft({ systemType: defaultSystem }), getCatalog(defaultSystem)),
     repository: createQuoteRepository({
       storage: resolveStorage(),
     }),
     isSubmitting: false,
     submitStatus: 'idle',
     submissionErrors: [],
-    validation: validateQuoteDraft(createEmptyQuoteDraft()),
+    validation: validateQuoteDraft(createEmptyQuoteDraft({ systemType: defaultSystem }), getCatalog(defaultSystem)),
   };
 
   function setNotice(type, message) {
@@ -584,14 +604,14 @@ function createQuoteApp(rootElement) {
   }
 
   function updateDraftDerivedState() {
-    state.preview = calculateQuotePricing(state.draft);
-    state.validation = validateQuoteDraft(state.draft);
+    state.preview = calculateQuotePricing(state.draft, getCatalog(state.activeSystem));
+    state.validation = validateQuoteDraft(state.draft, getCatalog(state.activeSystem));
   }
 
   function loadDraftForRoute(quoteId) {
     if (!quoteId) {
       state.currentBuilderQuoteId = null;
-      state.draft = createEmptyQuoteDraft();
+      state.draft = createEmptyQuoteDraft({ systemType: state.activeSystem });
       state.submitStatus = 'idle';
       state.submissionErrors = [];
       updateDraftDerivedState();
@@ -611,7 +631,8 @@ function createQuoteApp(rootElement) {
     }
 
     state.currentBuilderQuoteId = quoteId;
-    state.draft = quoteRecordToDraft(storedQuote);
+    state.draft = quoteRecordToDraft(storedQuote, getCatalog(storedQuote.systemType || 'hire-purchase'));
+    state.activeSystem = storedQuote.systemType || 'hire-purchase';
     state.submitStatus = storedQuote.status === 'submitted' ? 'submitted' : 'idle';
     state.submissionErrors = [];
     updateDraftDerivedState();
@@ -653,7 +674,7 @@ function createQuoteApp(rootElement) {
       return;
     }
 
-    MODULE_CATALOG.forEach((moduleConfig) => {
+    getCatalog(state.activeSystem).forEach((moduleConfig) => {
       const row = form.querySelector(`[data-module-row="${moduleConfig.code}"]`);
       const checkbox = form.elements[`include_${moduleConfig.code}`];
       const tierSelect = form.elements[`tier_${moduleConfig.code}`];
@@ -733,7 +754,7 @@ function createQuoteApp(rootElement) {
     }
 
     const formData = new FormData(form);
-    const moduleSelections = MODULE_CATALOG.reduce((accumulator, moduleConfig) => {
+    const moduleSelections = getCatalog(state.activeSystem).reduce((accumulator, moduleConfig) => {
       accumulator[moduleConfig.code] = {
         included: formData.get(`include_${moduleConfig.code}`) === 'on',
         selectedTier: formData.get(`tier_${moduleConfig.code}`) || moduleConfig.tiers[0].tierName,
@@ -750,7 +771,7 @@ function createQuoteApp(rootElement) {
       discountPercent: state.draft.discountPercent,
       moduleSelections,
       projectName: state.draft.projectName,
-      selectedTemplateId: String(formData.get('selectedTemplateId') || DEFAULT_TEMPLATE_ID),
+      selectedTemplateId: String(formData.get('selectedTemplateId') || (state.activeSystem === 'workflow-management' ? DEFAULT_WORKFLOW_TEMPLATE_ID : DEFAULT_TEMPLATE_ID)),
       taxPercent: state.draft.taxPercent,
     };
 
@@ -763,7 +784,12 @@ function createQuoteApp(rootElement) {
   function applyTemplate(templateId) {
     state.draft = {
       ...state.draft,
-      moduleSelections: buildModuleSelectionsFromTemplate(templateId),
+      moduleSelections: buildModuleSelectionsFromTemplate(
+        templateId, 
+        getCatalog(state.activeSystem), 
+        getTemplates(state.activeSystem), 
+        state.activeSystem === 'workflow-management' ? DEFAULT_WORKFLOW_TEMPLATE_ID : DEFAULT_TEMPLATE_ID
+      ),
       selectedTemplateId: templateId,
     };
     state.submissionErrors = [];
@@ -891,11 +917,26 @@ function createQuoteApp(rootElement) {
     if (action === 'new-quote') {
       state.notice = null;
       state.currentBuilderQuoteId = null;
-      state.draft = createEmptyQuoteDraft();
+      state.draft = createEmptyQuoteDraft({ systemType: state.activeSystem });
       state.submitStatus = 'idle';
       state.submissionErrors = [];
       updateDraftDerivedState();
       navigate('#/builder');
+      return;
+    }
+
+    if (action === 'switch-system') {
+      const targetSystem = actionTarget.dataset.system;
+      if (targetSystem !== state.activeSystem) {
+        state.activeSystem = targetSystem;
+        state.notice = null;
+        state.currentBuilderQuoteId = null;
+        state.draft = createEmptyQuoteDraft({ systemType: targetSystem });
+        state.submitStatus = 'idle';
+        state.submissionErrors = [];
+        updateDraftDerivedState();
+        renderCurrentRoute();
+      }
       return;
     }
 
