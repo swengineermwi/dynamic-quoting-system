@@ -19,12 +19,12 @@ test('calculateQuotePricing uses the starting tier value and applies discount an
 
   const pricing = calculateQuotePricing(draft);
 
-  assert.equal(pricing.lineItems[0].quotedPrice, 12000);
-  assert.equal(pricing.subtotal, 12000);
-  assert.equal(pricing.discountAmount, 1200);
-  assert.equal(pricing.taxAmount, 1728);
-  assert.equal(pricing.finalTotal, 12528);
-  assert.equal(pricing.midpointTotal, 12528);
+  assert.equal(pricing.lineItems[0].quotedPrice, 14500);
+  assert.equal(pricing.subtotal, 14500);
+  assert.equal(pricing.discountAmount, 1450);
+  assert.equal(pricing.taxAmount, 2088);
+  assert.equal(pricing.finalTotal, 15138);
+  assert.equal(pricing.midpointTotal, 15138);
 });
 
 test('calculateQuotePricing includes the AI Intelligence Module using the selected AI tier price', () => {
@@ -41,9 +41,9 @@ test('calculateQuotePricing includes the AI Intelligence Module using the select
 
   assert.ok(aiLineItem);
   assert.equal(aiLineItem.selectedTier, 'AI Decisioning');
-  assert.equal(aiLineItem.quotedPrice, 15000);
-  assert.equal(pricing.subtotal, 27000);
-  assert.equal(pricing.finalTotal, 27000);
+  assert.equal(aiLineItem.quotedPrice, 17500);
+  assert.equal(pricing.subtotal, 32000);
+  assert.equal(pricing.finalTotal, 32000);
 });
 
 test('calculateQuotePricing warns when other modules are included without shared core', () => {
