@@ -4,11 +4,22 @@ const submitQuoteHandler = require('./api/submit-quote');
 
 module.exports = {
   mode: 'development',
-  entry: './src/index.js',
+  entry: {
+    main: './src/index.js',
+    demo: './src/demo-workflow/index.js',
+  },
   plugins: [
     new HtmlWebpackPlugin({
       title: 'Template',
       template: './src/index.html',
+      filename: 'index.html',
+      chunks: ["main"]
+    }),
+    new HtmlWebpackPlugin({
+      title: 'Demo',
+      template: './src/demo-workflow/index.html',
+      filename: 'demo-workflow/index.html',
+      chunks: ["demo"]
     }),
   ],
   devServer: {
@@ -36,7 +47,7 @@ module.exports = {
     ],
   },
   output: {
-    filename: 'main.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'public'),
   },
 };

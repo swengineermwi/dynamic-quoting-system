@@ -191,7 +191,8 @@ function calculateQuotePricing(draft, catalog = MODULE_CATALOG) {
   });
   const warnings = [];
 
-  if (hasDependentModules && !hasCoreModule) {
+  const catalogHasCore = catalog.some((moduleConfig) => moduleConfig.code === CORE_MODULE_CODE);
+  if (catalogHasCore && hasDependentModules && !hasCoreModule) {
     warnings.push('Platform Core is typically included whenever other functional modules are quoted.');
   }
 

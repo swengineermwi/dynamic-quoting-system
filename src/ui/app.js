@@ -561,7 +561,10 @@ function renderShell(state, route, content) {
   return `
     <div class="shell">
       <header class="app-header no-print">
-        <h1>Dynamic Quoting System</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h1>Dynamic Quoting System</h1>
+          ${state.activeSystem === 'workflow-management' ? '<a href="/demo-workflow" class="button button--primary" style="text-decoration:none;">View Live Demo</a>' : ''}
+        </div>
         <nav class="system-tabs" style="margin-top: 1rem; display: flex; gap: 1rem;">
           <button type="button" class="button ${state.activeSystem === 'hire-purchase' ? 'button--primary' : 'button--ghost'}" data-action="switch-system" data-system="hire-purchase">Hire-Purchase Software</button>
           <button type="button" class="button ${state.activeSystem === 'workflow-management' ? 'button--primary' : 'button--ghost'}" data-action="switch-system" data-system="workflow-management">Workflow Management System</button>
@@ -913,6 +916,11 @@ function createQuoteApp(rootElement) {
     const action = actionTarget.dataset.action;
     const quoteId = actionTarget.dataset.quoteId;
     const nextStatus = actionTarget.dataset.status;
+
+    if (action === 'edit-quote') {
+      navigate(`#/builder/${quoteId}`);
+      return;
+    }
 
     if (action === 'new-quote') {
       state.notice = null;
